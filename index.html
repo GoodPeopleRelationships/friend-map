@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Friend Group Map (File Complaint)</title>
+    <title>Friend Group Map (Compliments Edition)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #222; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
         svg { display: block; width: 100vw; height: 100vh; cursor: grab; }
@@ -29,15 +29,17 @@
         }
         button:hover { background-color: #666; }
         
+        /* Button Colors */
         #mode-btn { background-color: #2196F3; border-color: #2196F3; }
         #stats-btn { background-color: #9c27b0; border-color: #9c27b0; }
-        #complaints-btn { background-color: #ff9800; border-color: #ff9800; }
         
-        /* NEW FILE COMPLAINT BUTTON STYLE */
-        #file-btn { background-color: #009688; border-color: #009688; }
-        #file-btn:hover { background-color: #00796b; }
+        #complaints-btn { background-color: #ff9800; border-color: #ff9800; }
+        #file-complaint-btn { background-color: #e65100; border-color: #e65100; }
+        
+        #compliments-btn { background-color: #e91e63; border-color: #e91e63; }
+        #file-compliment-btn { background-color: #009688; border-color: #009688; }
 
-        /* --- MODALS (Responsive) --- */
+        /* --- MODALS --- */
         .modal {
             display: none;
             position: fixed; top: 50%; left: 50%; 
@@ -69,11 +71,21 @@
         .type-bad { color: #f44336; font-weight: bold;}
         .type-nemesis { color: #9b27b0; font-weight: bold;}
 
-        /* Complaints Specifics */
-        .complaint-group { margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; }
-        .complaint-header { display: flex; align-items: center; font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #ffcc80; }
-        .complaint-list { list-style-type: disc; padding-left: 20px; color: #ddd; }
-        .complaint-list li { margin-bottom: 8px; font-size: 14px; line-height: 1.4; }
+        /* Complaints & Compliments List Styles */
+        .list-group { margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        .list-header { display: flex; align-items: center; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+        
+        /* Orange header for complaints */
+        .complaint-text { color: #ffcc80; }
+        /* Pink header for compliments */
+        .compliment-text { color: #f48fb1; }
+
+        .item-list { list-style-type: none; padding-left: 0; color: #ddd; }
+        .item-list li { margin-bottom: 8px; font-size: 14px; line-height: 1.4; padding-left: 15px; position: relative; }
+        
+        /* Custom Bullets */
+        .complaint-list li::before { content: "⚠️"; position: absolute; left: -5px; font-size: 10px; top: 2px; }
+        .compliment-list li::before { content: "❤️"; position: absolute; left: -5px; font-size: 10px; top: 2px; }
 
         /* --- LEGEND --- */
         #legend {
@@ -100,11 +112,15 @@
 <body>
 
 <div id="ui-controls">
-    <button id="circle-btn" onclick="arrangeInCircle()">Circle Layout</button>
+    <button id="circle-btn" onclick="arrangeInCircle()">Circle</button>
     <button id="mode-btn" onclick="toggleMode()">Mode: Outgoing ➡</button>
     <button id="stats-btn" onclick="showStats()">📊 Stats</button>
+    
     <button id="complaints-btn" onclick="showComplaints()">⚠️ Complaints</button>
-    <button id="file-btn" onclick="fileComplaint()">📝 File Complaint</button>
+    <button id="file-complaint-btn" onclick="fileComplaint()">📝 File Complaint</button>
+
+    <button id="compliments-btn" onclick="showCompliments()">🥰 Compliments</button>
+    <button id="file-compliment-btn" onclick="fileCompliment()">💌 File Compliment</button>
 </div>
 
 <div id="stats-modal" class="modal">
@@ -121,6 +137,12 @@
     <button class="close-btn" onclick="closeModal('complaints-modal')">Close</button>
 </div>
 
+<div id="compliments-modal" class="modal">
+    <h2>🥰 The Love List</h2>
+    <div id="compliments-content"></div>
+    <button class="close-btn" onclick="closeModal('compliments-modal')">Close</button>
+</div>
+
 <div id="legend">
     <div class="legend-item"><span class="dot" style="background-color: #4caf50;"></span> Good</div>
     <div class="legend-item"><span class="dot" style="background-color: #FFD700;"></span> Neutral</div>
@@ -135,8 +157,9 @@
     // 1. CONFIGURATION
     // ==========================================
     
-    // !!! PASTE YOUR GOOGLE FORM LINK HERE !!!
-    const GOOGLE_FORM_URL = "https://forms.gle/ceFTRsLVj8kjKABQ9"; 
+    // !!! PASTE YOUR GOOGLE FORM LINKS HERE !!!
+    const COMPLAINT_FORM_URL = "https://forms.gle/ceFTRsLVj8kjKABQ9"; 
+    const COMPLIMENT_FORM_URL = "https://forms.gle/AaAuRsM4T3BEcTZy9"; 
 
     const nodes = [
         { id: "rat", img: "rat.webp" },
@@ -228,7 +251,7 @@
         { source: "mateo", target: "thrice", type: "bad" },
         { source: "mateo", target: "rudhira", type: "nemesis" },
         { source: "mateo", target: "comms", type: "neutral" },
-        { source: "mateo", target: "rat", type: "bad" },
+        { source: "mateo", target: "rat", type: "good" },
         { source: "mateo", target: "kini", type: "neutral" },
         { source: "mateo", target: "mook", type: "neutral" },
         { source: "mateo", target: "kwan", type: "neutral" },
@@ -322,6 +345,13 @@
         "P14": [
             "Just has bad vibes generally."
         ]
+    };
+
+    // --- NEW: COMPLIMENTS LIST ---
+    const compliments = {
+        "Me": ["Made this cool website!", "Actually pretty funny sometimes."],
+        "P2": ["Makes the best brownies.", "Always gives rides home."],
+        "P8": ["Has immaculate fashion sense.", "Is a great listener."]
     };
 
     const colors = { 
@@ -524,20 +554,21 @@
         document.getElementById(id).style.display = 'none';
     }
 
-    // --- NEW: FILE COMPLAINT LOGIC ---
+    // --- FILE FORMS ---
     function fileComplaint() {
-        if (GOOGLE_FORM_URL.length < 30) {
-            alert("The website owner hasn't set up the Google Form link yet!");
-        } else {
-            window.open(GOOGLE_FORM_URL, '_blank');
-        }
+        if (COMPLAINT_FORM_URL.length < 30) alert("Link not set!");
+        else window.open(COMPLAINT_FORM_URL, '_blank');
+    }
+    
+    function fileCompliment() {
+        if (COMPLIMENT_FORM_URL.length < 30) alert("Link not set!");
+        else window.open(COMPLIMENT_FORM_URL, '_blank');
     }
 
     // --- STATS LOGIC ---
     function showStats() {
         const stats = {};
         const relationshipMap = {};
-        
         nodes.forEach(n => {
             stats[n.id] = { id: n.id, img: n.img, lovedScore: 0, hatedScore: 0, friendlyScore: 0, toxicScore: 0 };
             relationshipMap[n.id] = {};
@@ -546,20 +577,16 @@
         links.forEach(l => {
             const sId = typeof l.source === 'object' ? l.source.id : l.source;
             const tId = typeof l.target === 'object' ? l.target.id : l.target;
-
             relationshipMap[sId][tId] = l.type;
 
             if (l.type === 'good') {
-                stats[tId].lovedScore++;
-                stats[sId].friendlyScore++;
+                stats[tId].lovedScore++; stats[sId].friendlyScore++;
             } else if (l.type === 'neutral') {
                 stats[sId].toxicScore += 1;
             } else if (l.type === 'bad') {
-                stats[tId].hatedScore++; 
-                stats[sId].toxicScore += 3;
+                stats[tId].hatedScore++; stats[sId].toxicScore += 3;
             } else if (l.type === 'nemesis') {
-                stats[tId].hatedScore += 2; 
-                stats[sId].toxicScore += 5;
+                stats[tId].hatedScore += 2; stats[sId].toxicScore += 5;
             }
         });
 
@@ -619,35 +646,37 @@
         document.getElementById('stats-modal').style.display = 'block';
     }
 
-    function showComplaints() {
+    // --- COMPLAINTS/COMPLIMENTS RENDERERS ---
+    function renderList(modalId, contentId, dataObj, emptyMsg, cssClass) {
         let html = "";
-        
         nodes.forEach(node => {
-            const userComplaints = complaints[node.id];
-            
-            if (userComplaints && userComplaints.length > 0) {
+            const items = dataObj[node.id];
+            if (items && items.length > 0) {
                 html += `
-                    <div class="complaint-group">
-                        <div class="complaint-header">
+                    <div class="list-group">
+                        <div class="list-header ${cssClass}">
                             <img src="${node.img}" class="winner-img">
                             ${node.id}
                         </div>
-                        <ul class="complaint-list">
-                            ${userComplaints.map(c => `<li>${c}</li>`).join('')}
+                        <ul class="item-list ${cssClass === 'complaint-text' ? 'complaint-list' : 'compliment-list'}">
+                            ${items.map(item => `<li>${item}</li>`).join('')}
                         </ul>
                     </div>
                 `;
             }
         });
+        if (html === "") html = `<p style='text-align:center; color:#999;'>${emptyMsg}</p>`;
+        document.getElementById(contentId).innerHTML = html;
+        document.getElementById(modalId).style.display = 'block';
+    }
 
-        if (html === "") {
-            html = "<p style='text-align:center; color:#999;'>No complaints recorded! Everyone is behaving.</p>";
-        }
+    function showComplaints() {
+        renderList('complaints-modal', 'complaints-content', complaints, "No complaints recorded!", "complaint-text");
+    }
 
-        document.getElementById('complaints-content').innerHTML = html;
-        document.getElementById('complaints-modal').style.display = 'block';
+    function showCompliments() {
+        renderList('compliments-modal', 'compliments-content', compliments, "No compliments recorded yet!", "compliment-text");
     }
 </script>
 </body>
 </html>
-
