@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Friend Group Map (Mobile Fix)</title>
+    <title>Friend Group Map (File Complaint)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #222; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
         svg { display: block; width: 100vw; height: 100vh; cursor: grab; }
@@ -19,41 +19,36 @@
         #ui-controls {
             position: absolute; top: 20px; left: 20px; 
             display: flex; gap: 10px; z-index: 1000;
-            /* Allow buttons to wrap on small screens */
-            flex-wrap: wrap; 
-            max-width: 90vw;
+            flex-wrap: wrap; max-width: 90vw;
         }
         button {
             padding: 10px 15px; background-color: #444; color: white;
             border: 2px solid #fff; border-radius: 5px; cursor: pointer;
             font-weight: bold; font-size: 14px; transition: background 0.2s;
-            white-space: nowrap; /* Keep button text on one line */
+            white-space: nowrap;
         }
         button:hover { background-color: #666; }
         
         #mode-btn { background-color: #2196F3; border-color: #2196F3; }
         #stats-btn { background-color: #9c27b0; border-color: #9c27b0; }
         #complaints-btn { background-color: #ff9800; border-color: #ff9800; }
+        
+        /* NEW FILE COMPLAINT BUTTON STYLE */
+        #file-btn { background-color: #009688; border-color: #009688; }
+        #file-btn:hover { background-color: #00796b; }
 
         /* --- MODALS (Responsive) --- */
         .modal {
             display: none;
-            position: fixed; 
-            top: 50%; left: 50%; 
+            position: fixed; top: 50%; left: 50%; 
             transform: translate(-50%, -50%);
             background-color: rgba(30, 30, 30, 0.95);
             padding: 25px;
             border-radius: 15px; border: 2px solid #555; color: white;
             z-index: 2000;
-            
-            /* RESPONSIVE WIDTH FIX */
-            width: 90%;           /* Take up 90% of screen width on mobile */
-            max-width: 500px;     /* But never get larger than 500px on desktop */
-            max-height: 80vh;     /* Never taller than 80% of screen height */
-            
-            overflow-y: auto;     /* Scroll if content is too long */
-            box-shadow: 0 0 20px rgba(0,0,0,0.8); backdrop-filter: blur(5px);
-            box-sizing: border-box; /* Include padding in width calc */
+            width: 90%; max-width: 500px; max-height: 80vh;
+            overflow-y: auto; box-shadow: 0 0 20px rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+            box-sizing: border-box;
         }
         .modal h2 { margin-top: 0; text-align: center; border-bottom: 1px solid #555; padding-bottom: 10px; font-size: 1.5em; }
         .modal h3 { margin-top: 25px; border-bottom: 1px solid #444; padding-bottom: 5px; color: #ddd; font-size: 1.2em;}
@@ -85,14 +80,12 @@
             position: absolute; bottom: 20px; left: 20px;
             background-color: rgba(0, 0, 0, 0.7); padding: 10px;
             border-radius: 8px; border: 1px solid #555; color: white;
-            z-index: 1000; pointer-events: none;
-            font-size: 12px;
+            z-index: 1000; pointer-events: none; font-size: 12px;
         }
         .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
         .legend-item:last-child { margin-bottom: 0; }
         .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; display: inline-block; }
 
-        /* --- MOBILE SPECIFIC TWEAKS --- */
         @media (max-width: 600px) {
             button { padding: 8px 10px; font-size: 12px; }
             #ui-controls { gap: 5px; }
@@ -111,6 +104,7 @@
     <button id="mode-btn" onclick="toggleMode()">Mode: Outgoing ➡</button>
     <button id="stats-btn" onclick="showStats()">📊 Stats</button>
     <button id="complaints-btn" onclick="showComplaints()">⚠️ Complaints</button>
+    <button id="file-btn" onclick="fileComplaint()">📝 File Complaint</button>
 </div>
 
 <div id="stats-modal" class="modal">
@@ -141,6 +135,9 @@
     // 1. CONFIGURATION
     // ==========================================
     
+    // !!! PASTE YOUR GOOGLE FORM LINK HERE !!!
+    const GOOGLE_FORM_URL = "https://forms.gle/ceFTRsLVj8kjKABQ9"; 
+
     const nodes = [
         { id: "rat", img: "rat.webp" },
         { id: "claire", img: "claire.webp" },
@@ -353,7 +350,6 @@
 
     const defs = svg.append("defs");
     
-    // Fixed Marker Generation
     ["good", "bad", "neutral", "nemesis"].forEach(type => {
         defs.append("marker")
             .attr("id", `arrow-${type}`)
@@ -523,9 +519,17 @@
         simulation.alpha(1).restart();
     }
 
-    // --- MODAL UTILS ---
     function closeModal(id) {
         document.getElementById(id).style.display = 'none';
+    }
+
+    // --- NEW: FILE COMPLAINT LOGIC ---
+    function fileComplaint() {
+        if (GOOGLE_FORM_URL.length < 30) {
+            alert("The website owner hasn't set up the Google Form link yet!");
+        } else {
+            window.open(GOOGLE_FORM_URL, '_blank');
+        }
     }
 
     // --- STATS LOGIC ---
@@ -558,7 +562,6 @@
             }
         });
 
-        // Conflicts
         const conflicts = [];
         const positiveTypes = ['good'];
         const negativeTypes = ['bad', 'nemesis'];
@@ -583,7 +586,6 @@
             }
         }
         
-        // Render
         const allStats = Object.values(stats);
         const mostLoved = allStats.sort((a,b) => b.lovedScore - a.lovedScore)[0];
         const mostHated = allStats.sort((a,b) => b.hatedScore - a.hatedScore)[0];
@@ -616,7 +618,6 @@
         document.getElementById('stats-modal').style.display = 'block';
     }
 
-    // --- NEW COMPLAINTS LOGIC ---
     function showComplaints() {
         let html = "";
         
