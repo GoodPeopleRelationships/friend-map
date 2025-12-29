@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Friend Group Map (Polished)</title>
+    <title>Friend Group Map (Complaints Edition)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #222; font-family: sans-serif; }
         svg { display: block; width: 100vw; height: 100vh; cursor: grab; }
@@ -25,30 +25,36 @@
             font-weight: bold; font-size: 14px; transition: background 0.2s;
         }
         button:hover { background-color: #666; }
+        
         #mode-btn { background-color: #2196F3; border-color: #2196F3; }
         #mode-btn:hover { background-color: #1976D2; }
+        
         #stats-btn { background-color: #9c27b0; border-color: #9c27b0; }
         #stats-btn:hover { background-color: #7b1fa2; }
 
-        /* --- STATS MODAL --- */
-        #stats-modal {
+        /* NEW COMPLAINTS BUTTON STYLE */
+        #complaints-btn { background-color: #ff9800; border-color: #ff9800; }
+        #complaints-btn:hover { background-color: #f57c00; }
+
+        /* --- MODALS (Shared Styles) --- */
+        .modal {
             display: none;
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background-color: rgba(30, 30, 30, 0.95);
             padding: 30px;
             border-radius: 15px; border: 2px solid #555; color: white;
             z-index: 2000;
-            
-            /* FIXED: Much wider now */
-            width: 500px; 
-            
+            width: 500px;
             max-height: 80vh; overflow-y: auto;
             box-shadow: 0 0 20px rgba(0,0,0,0.8); backdrop-filter: blur(5px);
         }
-        #stats-modal h2 { margin-top: 0; text-align: center; border-bottom: 1px solid #555; padding-bottom: 10px; }
-        #stats-modal h3 { margin-top: 25px; border-bottom: 1px solid #444; padding-bottom: 5px; color: #ddd;}
+        .modal h2 { margin-top: 0; text-align: center; border-bottom: 1px solid #555; padding-bottom: 10px; }
+        .modal h3 { margin-top: 25px; border-bottom: 1px solid #444; padding-bottom: 5px; color: #ddd;}
         
-        /* Stats Rows */
+        .close-btn { display: block; width: 100%; margin-top: 20px; background-color: #f44336; border-color: #f44336; }
+        .close-btn:hover { background-color: #d32f2f; }
+
+        /* Stats Specifics */
         .stat-row { display: flex; justify-content: space-between; align-items: center; margin: 15px 0; font-size: 16px; }
         .stat-label { font-weight: bold; color: #ccc; }
         .stat-value { font-weight: bold; font-size: 18px; }
@@ -56,15 +62,17 @@
         
         /* Conflict List Styles */
         #conflict-list { max-height: 200px; overflow-y: auto; margin-top: 10px; }
-        .conflict-item {
-            background: rgba(255,255,255,0.05); padding: 10px; margin-bottom: 8px; border-radius: 5px; font-size: 14px;
-        }
+        .conflict-item { background: rgba(255,255,255,0.05); padding: 10px; margin-bottom: 8px; border-radius: 5px; font-size: 14px; }
         .conflict-arrow { margin: 0 10px; color: #999; }
         .type-good { color: #4caf50; font-weight: bold;}
         .type-bad { color: #f44336; font-weight: bold;}
         .type-nemesis { color: #9b27b0; font-weight: bold;}
 
-        #close-stats { display: block; width: 100%; margin-top: 20px; background-color: #f44336; border-color: #f44336; }
+        /* Complaints Specifics */
+        .complaint-group { margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        .complaint-header { display: flex; align-items: center; font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #ffcc80; }
+        .complaint-list { list-style-type: disc; padding-left: 20px; color: #ddd; }
+        .complaint-list li { margin-bottom: 5px; }
 
         /* --- LEGEND --- */
         #legend {
@@ -85,16 +93,22 @@
     <button id="circle-btn" onclick="arrangeInCircle()">Circle Layout</button>
     <button id="mode-btn" onclick="toggleMode()">Mode: Outgoing ➡</button>
     <button id="stats-btn" onclick="showStats()">📊 View Stats</button>
+    <button id="complaints-btn" onclick="showComplaints()">⚠️ Complaints</button>
 </div>
 
-<div id="stats-modal">
+<div id="stats-modal" class="modal">
     <h2>Relationship Stats</h2>
     <div id="stats-content"></div>
-    
     <h3>⚔️ Conflicting Relationships</h3>
     <div id="conflict-list"></div>
+    <button class="close-btn" onclick="closeModal('stats-modal')">Close</button>
+</div>
 
-    <button id="close-stats" onclick="closeStats()">Close</button>
+<div id="complaints-modal" class="modal">
+    <h2>⚠️ The Grievance List</h2>
+    <div id="complaints-content">
+        </div>
+    <button class="close-btn" onclick="closeModal('complaints-modal')">Close</button>
 </div>
 
 <div id="legend">
@@ -274,6 +288,28 @@
         { source: "mook", target: "redell", type: "good" },
     ];
 
+    // ==========================================
+    // NEW: COMPLAINTS CONFIGURATION
+    // ==========================================
+    // Add lists of strings for each person ID.
+    const complaints = {
+        "kini": [
+            "isn't a real person",
+            "conversation has to be about him or he leaves call"
+        ],
+        "rat": [
+            "talks about sperm too much",
+            "jewish"
+        ],
+        "P5": [
+            "Spoils movies before anyone else has seen them.",
+            "Takes the last slice of pizza without asking."
+        ],
+        "P14": [
+            "Just has bad vibes generally."
+        ]
+    };
+
     const colors = { 
         good: "#4caf50", bad: "#f44336", neutral: "#FFD700", nemesis: "#9b27b0" 
     };
@@ -301,20 +337,17 @@
 
     const defs = svg.append("defs");
     
-    // --- FIXED MARKER GENERATION ---
-    // We use 'userSpaceOnUse' to ensure arrow size is CONSTANT
-    // regardless of the line thickness.
+    // Fixed Marker Generation
     ["good", "bad", "neutral", "nemesis"].forEach(type => {
         defs.append("marker")
             .attr("id", `arrow-${type}`)
             .attr("viewBox", "0 -5 10 10")
-            // refX=42 ensures the arrow tip touches the edge of the circle (Radius 35)
             .attr("refX", 42) 
-            .attr("refY", 0) // FIXED: Center alignment
-            .attr("markerWidth", 12) // FIXED: Constant size
+            .attr("refY", 0) 
+            .attr("markerWidth", 12) 
             .attr("markerHeight", 12)
             .attr("orient", "auto")
-            .attr("markerUnits", "userSpaceOnUse") // PREVENTS GIANT ARROWS
+            .attr("markerUnits", "userSpaceOnUse") 
             .append("path")
             .attr("d", "M0,-5L10,0L0,5")
             .attr("fill", colors[type]);
@@ -344,7 +377,6 @@
         .selectAll("path")
         .data(links)
         .join("path")
-        // Nemesis lines are thicker, but arrow stays same size now
         .attr("stroke-width", d => d.type === 'nemesis' ? 4 : 2)
         .attr("stroke", d => colors[d.type] || "#fff")
         .attr("marker-end", d => `url(#arrow-${d.type})`);
@@ -401,7 +433,7 @@
     }
 
     // ==========================================
-    // 3. UI LOGIC & STATS
+    // 3. UI LOGIC
     // ==========================================
 
     let selectedNodeId = null;
@@ -475,7 +507,12 @@
         simulation.alpha(1).restart();
     }
 
-    // --- NEW STATS & CONFLICT LOGIC ---
+    // --- MODAL UTILS ---
+    function closeModal(id) {
+        document.getElementById(id).style.display = 'none';
+    }
+
+    // --- STATS LOGIC ---
     function showStats() {
         const stats = {};
         const relationshipMap = {};
@@ -505,7 +542,7 @@
             }
         });
 
-        // --- Calculate Conflicts ---
+        // Conflicts
         const conflicts = [];
         const positiveTypes = ['good'];
         const negativeTypes = ['bad', 'nemesis'];
@@ -530,7 +567,7 @@
             }
         }
         
-        // --- Render ---
+        // Render
         const allStats = Object.values(stats);
         const mostLoved = allStats.sort((a,b) => b.lovedScore - a.lovedScore)[0];
         const mostHated = allStats.sort((a,b) => b.hatedScore - a.hatedScore)[0];
@@ -563,12 +600,37 @@
         document.getElementById('stats-modal').style.display = 'block';
     }
 
-    function closeStats() {
-        document.getElementById('stats-modal').style.display = 'none';
+    // --- NEW COMPLAINTS LOGIC ---
+    function showComplaints() {
+        let html = "";
+        
+        // Iterate through everyone in the graph
+        nodes.forEach(node => {
+            const userComplaints = complaints[node.id];
+            
+            // Only show if they have complaints
+            if (userComplaints && userComplaints.length > 0) {
+                html += `
+                    <div class="complaint-group">
+                        <div class="complaint-header">
+                            <img src="${node.img}" class="winner-img">
+                            ${node.id}
+                        </div>
+                        <ul class="complaint-list">
+                            ${userComplaints.map(c => `<li>${c}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+        });
+
+        if (html === "") {
+            html = "<p style='text-align:center; color:#999;'>No complaints recorded! Everyone is behaving.</p>";
+        }
+
+        document.getElementById('complaints-content').innerHTML = html;
+        document.getElementById('complaints-modal').style.display = 'block';
     }
 </script>
 </body>
-
 </html>
-
-
