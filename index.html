@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Friend Group Map (Compliments Edition)</title>
+    <title>Friend Group Map</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #222; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
         svg { display: block; width: 100vw; height: 100vh; cursor: grab; }
@@ -13,6 +13,7 @@
             font-size: 12px; fill: white; pointer-events: none;
             text-shadow: 1px 1px 2px black; font-weight: bold; transition: opacity 0.3s;
         }
+        
         circle, path, image { transition: opacity 0.3s; }
 
         /* --- UI CONTROLS --- */
@@ -41,8 +42,7 @@
 
         /* --- MODALS --- */
         .modal {
-            display: none;
-            position: fixed; top: 50%; left: 50%; 
+            display: none; position: fixed; top: 50%; left: 50%; 
             transform: translate(-50%, -50%);
             background-color: rgba(30, 30, 30, 0.95);
             padding: 25px;
@@ -54,38 +54,29 @@
         }
         .modal h2 { margin-top: 0; text-align: center; border-bottom: 1px solid #555; padding-bottom: 10px; font-size: 1.5em; }
         .modal h3 { margin-top: 25px; border-bottom: 1px solid #444; padding-bottom: 5px; color: #ddd; font-size: 1.2em;}
-        
         .close-btn { display: block; width: 100%; margin-top: 20px; background-color: #f44336; border-color: #f44336; }
 
-        /* Stats Rows */
+        /* Lists */
+        .list-group { margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        .list-header { display: flex; align-items: center; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+        .complaint-text { color: #ffcc80; }
+        .compliment-text { color: #f48fb1; }
+        .item-list { list-style-type: none; padding-left: 0; color: #ddd; }
+        .item-list li { margin-bottom: 8px; font-size: 14px; line-height: 1.4; padding-left: 15px; position: relative; }
+        .complaint-list li::before { content: "⚠️"; position: absolute; left: -5px; font-size: 10px; top: 2px; }
+        .compliment-list li::before { content: "❤️"; position: absolute; left: -5px; font-size: 10px; top: 2px; }
+
+        /* Stats Styles */
         .stat-row { display: flex; justify-content: space-between; align-items: center; margin: 15px 0; font-size: 16px; }
         .stat-label { font-weight: bold; color: #ccc; flex: 1; }
         .stat-value { font-weight: bold; font-size: 18px; text-align: right; }
         .winner-img { width: 30px; height: 30px; border-radius: 50%; vertical-align: middle; margin-right: 5px; border: 2px solid white; }
-        
-        /* Conflict List Styles */
         #conflict-list { max-height: 200px; overflow-y: auto; margin-top: 10px; }
         .conflict-item { background: rgba(255,255,255,0.05); padding: 10px; margin-bottom: 8px; border-radius: 5px; font-size: 13px; line-height: 1.4; }
         .conflict-arrow { margin: 0 5px; color: #999; }
         .type-good { color: #4caf50; font-weight: bold;}
         .type-bad { color: #f44336; font-weight: bold;}
         .type-nemesis { color: #9b27b0; font-weight: bold;}
-
-        /* Complaints & Compliments List Styles */
-        .list-group { margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; }
-        .list-header { display: flex; align-items: center; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
-        
-        /* Orange header for complaints */
-        .complaint-text { color: #ffcc80; }
-        /* Pink header for compliments */
-        .compliment-text { color: #f48fb1; }
-
-        .item-list { list-style-type: none; padding-left: 0; color: #ddd; }
-        .item-list li { margin-bottom: 8px; font-size: 14px; line-height: 1.4; padding-left: 15px; position: relative; }
-        
-        /* Custom Bullets */
-        .complaint-list li::before { content: "⚠️"; position: absolute; left: -5px; font-size: 10px; top: 2px; }
-        .compliment-list li::before { content: "❤️"; position: absolute; left: -5px; font-size: 10px; top: 2px; }
 
         /* --- LEGEND --- */
         #legend {
@@ -102,9 +93,6 @@
             button { padding: 8px 10px; font-size: 12px; }
             #ui-controls { gap: 5px; }
             .modal { padding: 15px; width: 95%; }
-            .stat-value { font-size: 14px; }
-            .stat-label { font-size: 14px; }
-            .conflict-item { font-size: 12px; }
         }
     </style>
     <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -117,10 +105,10 @@
     <button id="stats-btn" onclick="showStats()">📊 Stats</button>
     
     <button id="complaints-btn" onclick="showComplaints()">⚠️ Complaints</button>
-    <button id="file-complaint-btn" onclick="fileComplaint()">📝 File Complaint</button>
+    <button id="file-complaint-btn" onclick="fileComplaint()">📝 File</button>
 
     <button id="compliments-btn" onclick="showCompliments()">🥰 Compliments</button>
-    <button id="file-compliment-btn" onclick="fileCompliment()">💌 File Compliment</button>
+    <button id="file-compliment-btn" onclick="fileCompliment()">💌 File</button>
 </div>
 
 <div id="stats-modal" class="modal">
@@ -157,7 +145,6 @@
     // 1. CONFIGURATION
     // ==========================================
     
-    // !!! PASTE YOUR GOOGLE FORM LINKS HERE !!!
     const COMPLAINT_FORM_URL = "https://forms.gle/ceFTRsLVj8kjKABQ9"; 
     const COMPLIMENT_FORM_URL = "https://forms.gle/AaAuRsM4T3BEcTZy9"; 
 
@@ -177,23 +164,20 @@
         { id: "thrice", img: "thrice.webp" },
     ];
 
-    // NOTICE: We now define ONE-WAY relationships.
-    // If feelings are mutual, you need TWO entries (one from A to B, one from B to A).
     const links = [
-        // Me <-> Sarah (Mutual Good)
         { source: "rat", target: "claire", type: "good" },
         { source: "rat", target: "comms", type: "good" },
         { source: "rat", target: "emma", type: "good" },
         { source: "rat", target: "iced", type: "good" },
         { source: "rat", target: "kini", type: "good" },
-        { source: "rat", target: "kwan", type: "bad" },
+        { source: "rat", target: "kwan", type: "neutral" },
         { source: "rat", target: "mook", type: "bad" },
-        { source: "rat", target: "redell", type: "bad" },
+        { source: "rat", target: "redell", type: "neutral" },
         { source: "rat", target: "rudhira", type: "bad" },
-        { source: "rat", target: "sid", type: "bad" },
+        { source: "rat", target: "sid", type: "neutral" },
         { source: "rat", target: "thrice", type: "bad" },
         { source: "rat", target: "mateo", type: "good" },
-		
+        
         { source: "kini", target: "claire", type: "good" },
         { source: "kini", target: "comms", type: "good" },
         { source: "kini", target: "emma", type: "good" },
@@ -206,7 +190,7 @@
         { source: "kini", target: "sid", type: "good" },
         { source: "kini", target: "thrice", type: "good" },
         { source: "kini", target: "mateo", type: "neutral" },
-		
+        
         { source: "redell", target: "claire", type: "good" },
         { source: "redell", target: "comms", type: "good" },
         { source: "redell", target: "emma", type: "good" },
@@ -219,7 +203,7 @@
         { source: "redell", target: "thrice", type: "good" },
         { source: "redell", target: "mateo", type: "good" },
         { source: "redell", target: "kini", type: "good" },
-		
+        
         { source: "thrice", target: "iced", type: "good" },
         { source: "thrice", target: "mateo", type: "good" },
         { source: "thrice", target: "rudhira", type: "bad" },
@@ -232,7 +216,7 @@
         { source: "thrice", target: "sid", type: "good" },
         { source: "thrice", target: "claire", type: "good" },
         { source: "thrice", target: "redell", type: "good" },
-		
+        
         { source: "emma", target: "iced", type: "good" },
         { source: "emma", target: "mateo", type: "good" },
         { source: "emma", target: "thrice", type: "good" },
@@ -245,7 +229,7 @@
         { source: "emma", target: "sid", type: "neutral" },
         { source: "emma", target: "claire", type: "good" },
         { source: "emma", target: "redell", type: "good" },
-		
+        
        { source: "mateo", target: "iced", type: "good" },
         { source: "mateo", target: "emma", type: "neutral" },
         { source: "mateo", target: "thrice", type: "bad" },
@@ -257,7 +241,7 @@
         { source: "mateo", target: "kwan", type: "neutral" },
         { source: "mateo", target: "sid", type: "bad" },
         { source: "mateo", target: "redell", type: "bad" },
-		
+        
         { source: "comms", target: "iced", type: "good" },
         { source: "comms", target: "mateo", type: "good" },
         { source: "comms", target: "thrice", type: "good" },
@@ -270,7 +254,7 @@
         { source: "comms", target: "sid", type: "nemesis" },
         { source: "comms", target: "claire", type: "good" },
         { source: "comms", target: "redell", type: "good" },
-		
+        
         { source: "iced", target: "comms", type: "good" },
         { source: "iced", target: "mateo", type: "good" },
         { source: "iced", target: "thrice", type: "neutral" },
@@ -283,7 +267,7 @@
         { source: "iced", target: "sid", type: "neutral" },
         { source: "iced", target: "claire", type: "good" },
         { source: "iced", target: "redell", type: "bad" },
-		
+        
         { source: "kwan", target: "iced", type: "good" },
         { source: "kwan", target: "mateo", type: "good" },
         { source: "kwan", target: "thrice", type: "bad" },
@@ -297,7 +281,7 @@
         { source: "kwan", target: "claire", type: "good" },
         { source: "kwan", target: "redell", type: "neutral" },
 
-	    { source: "rudhira", target: "iced", type: "good" },
+        { source: "rudhira", target: "iced", type: "good" },
         { source: "rudhira", target: "mateo", type: "good" },
         { source: "rudhira", target: "thrice", type: "good" },
         { source: "rudhira", target: "kwan", type: "good" },
@@ -310,7 +294,7 @@
         { source: "rudhira", target: "claire", type: "good" },
         { source: "rudhira", target: "redell", type: "neutral" },
 
-	    { source: "mook", target: "iced", type: "good" },
+        { source: "mook", target: "iced", type: "good" },
         { source: "mook", target: "mateo", type: "good" },
         { source: "mook", target: "thrice", type: "good" },
         { source: "mook", target: "kwan", type: "good" },
@@ -324,10 +308,6 @@
         { source: "mook", target: "redell", type: "good" },
     ];
 
-    // ==========================================
-    // NEW: COMPLAINTS CONFIGURATION
-    // ==========================================
-    // Add lists of strings for each person ID.
     const complaints = {
         "kini": [
             "isn't a real person",
@@ -336,7 +316,7 @@
         "rat": [
             "talks about sperm too much",
             "jewish",
-			"Doesn't have a freaking couch"
+            "Doesn't have a freaking couch"
         ],
         "P5": [
             "Spoils movies before anyone else has seen them.",
@@ -347,7 +327,6 @@
         ]
     };
 
-    // --- NEW: COMPLIMENTS LIST ---
     const compliments = {
         "rat": ["Beautiful"],
         "P2": ["Makes the best brownies.", "Always gives rides home."],
@@ -355,7 +334,7 @@
     };
 
     const colors = { 
-        good: "#4caf50", bad: "#f44336", neutral: "#FFD700", nemesis: "#9b27b0" 
+        good: "#4caf50", bad: "#f44336", neutral: "#FFD700", nemesis: "#9b27b0"
     };
 
     // ==========================================
@@ -371,43 +350,26 @@
         .attr("viewBox", [0, 0, width, height])
         .on("click", resetFocus);
 
-    const g = svg.append("g");
-
-    const zoom = d3.zoom()
-        .scaleExtent([0.1, 4])
-        .on("zoom", (event) => g.attr("transform", event.transform));
-
-    svg.call(zoom);
-
     const defs = svg.append("defs");
     
     ["good", "bad", "neutral", "nemesis"].forEach(type => {
         defs.append("marker")
-            .attr("id", `arrow-${type}`)
-            .attr("viewBox", "0 -5 10 10")
-            .attr("refX", 42) 
-            .attr("refY", 0) 
-            .attr("markerWidth", 12) 
-            .attr("markerHeight", 12)
-            .attr("orient", "auto")
-            .attr("markerUnits", "userSpaceOnUse") 
-            .append("path")
-            .attr("d", "M0,-5L10,0L0,5")
-            .attr("fill", colors[type]);
+            .attr("id", `arrow-${type}`).attr("viewBox", "0 -5 10 10")
+            .attr("refX", 42).attr("refY", 0).attr("markerWidth", 12).attr("markerHeight", 12)
+            .attr("orient", "auto").attr("markerUnits", "userSpaceOnUse") 
+            .append("path").attr("d", "M0,-5L10,0L0,5").attr("fill", colors[type]);
     });
 
     nodes.forEach(d => {
         defs.append("pattern")
-            .attr("id", "image-" + d.id)
-            .attr("height", "100%")
-            .attr("width", "100%")
+            .attr("id", "image-" + d.id).attr("height", "100%").attr("width", "100%")
             .attr("patternContentUnits", "objectBoundingBox")
-            .append("image")
-            .attr("height", 1)
-            .attr("width", 1)
-            .attr("preserveAspectRatio", "none")
-            .attr("xlink:href", d.img);
+            .append("image").attr("height", 1).attr("width", 1).attr("preserveAspectRatio", "none").attr("xlink:href", d.img);
     });
+
+    const g = svg.append("g");
+    const zoom = d3.zoom().scaleExtent([0.1, 4]).on("zoom", (event) => g.attr("transform", event.transform));
+    svg.call(zoom);
 
     const simulation = d3.forceSimulation(nodes)
         .force("link", d3.forceLink(links).id(d => d.id).distance(350)) 
@@ -418,32 +380,21 @@
     const link = g.append("g")
         .attr("fill", "none")
         .selectAll("path")
-        .data(links)
-        .join("path")
+        .data(links).join("path")
         .attr("stroke-width", d => d.type === 'nemesis' ? 4 : 2)
         .attr("stroke", d => colors[d.type] || "#fff")
         .attr("marker-end", d => `url(#arrow-${d.type})`);
 
     const node = g.append("g")
         .selectAll("circle")
-        .data(nodes)
-        .join("circle")
-        .attr("r", nodeRadius)
-        .attr("fill", d => `url(#image-${d.id})`)
-        .attr("stroke", "#fff")
-        .attr("stroke-width", 2)
-        .attr("cursor", "pointer")
-        .on("click", handleNodeClick)
-        .call(drag(simulation));
+        .data(nodes).join("circle")
+        .attr("r", nodeRadius).attr("fill", d => `url(#image-${d.id})`)
+        .attr("stroke", "#fff").attr("stroke-width", 2).attr("cursor", "pointer")
+        .on("click", handleNodeClick).call(drag(simulation));
 
     const label = g.append("g")
-        .selectAll("text")
-        .data(nodes)
-        .join("text")
-        .attr("dx", 0)
-        .attr("dy", nodeRadius + 15)
-        .attr("text-anchor", "middle")
-        .text(d => d.id);
+        .selectAll("text").data(nodes).join("text")
+        .attr("dx", 0).attr("dy", nodeRadius + 15).attr("text-anchor", "middle").text(d => d.id);
 
     simulation.on("tick", () => {
         link.attr("d", linkArc);
@@ -452,64 +403,36 @@
     });
 
     function linkArc(d) {
-        const dx = d.target.x - d.source.x;
-        const dy = d.target.y - d.source.y;
+        const dx = d.target.x - d.source.x; const dy = d.target.y - d.source.y;
         const dr = Math.sqrt(dx * dx + dy * dy);
         return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
     }
 
     function drag(simulation) {
-        function dragstarted(event) {
-            if (!event.active) simulation.alphaTarget(0.3).restart();
-            event.subject.fx = event.subject.x;
-            event.subject.fy = event.subject.y;
-        }
-        function dragged(event) {
-            event.subject.fx = event.x;
-            event.subject.fy = event.y;
-        }
-        function dragended(event) {
-            if (!event.active) simulation.alphaTarget(0);
-        }
-        return d3.drag()
-            .on("start", dragstarted).on("drag", dragged).on("end", dragended);
+        function dragstarted(event) { if (!event.active) simulation.alphaTarget(0.3).restart(); event.subject.fx = event.subject.x; event.subject.fy = event.subject.y; }
+        function dragged(event) { event.subject.fx = event.x; event.subject.fy = event.y; }
+        function dragended(event) { if (!event.active) simulation.alphaTarget(0); }
+        return d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended);
     }
-
-    // ==========================================
-    // 3. UI LOGIC
-    // ==========================================
 
     let selectedNodeId = null;
 
     function toggleMode() {
         const btn = document.getElementById("mode-btn");
-        if (currentMode === 'outgoing') {
-            currentMode = 'incoming';
-            btn.innerText = "Mode: Incoming ⬅";
-        } else {
-            currentMode = 'outgoing';
-            btn.innerText = "Mode: Outgoing ➡";
-        }
-        if (selectedNodeId) {
-            const d = nodes.find(n => n.id === selectedNodeId);
-            if (d) highlightNode(d);
-        }
+        if (currentMode === 'outgoing') { currentMode = 'incoming'; btn.innerText = "Mode: Incoming ⬅"; } 
+        else { currentMode = 'outgoing'; btn.innerText = "Mode: Outgoing ➡"; }
+        if (selectedNodeId) { const d = nodes.find(n => n.id === selectedNodeId); if (d) highlightNode(d); }
     }
 
     function handleNodeClick(event, d) {
         event.stopPropagation();
-        if (selectedNodeId === d.id) {
-            resetFocus();
-        } else {
-            highlightNode(d);
-        }
+        if (selectedNodeId === d.id) resetFocus();
+        else highlightNode(d);
     }
 
     function highlightNode(d) {
         selectedNodeId = d.id;
-        node.style("opacity", 0.1);
-        link.style("opacity", 0.1);
-        label.style("opacity", 0.1);
+        node.style("opacity", 0.1); link.style("opacity", 0.1); label.style("opacity", 0.1); 
 
         node.filter(n => n.id === d.id).style("opacity", 1);
         label.filter(n => n.id === d.id).style("opacity", 1);
@@ -531,17 +454,13 @@
 
     function resetFocus() {
         selectedNodeId = null;
-        node.style("opacity", 1);
-        link.style("opacity", 1);
-        label.style("opacity", 1);
+        node.style("opacity", 1); link.style("opacity", 1); label.style("opacity", 1);
     }
 
     function arrangeInCircle() {
-        const centerX = width / 2;
-        const centerY = height / 2;
+        const centerX = width / 2; const centerY = height / 2;
         const radius = Math.min(width, height) * 0.4;
         const angleStep = (2 * Math.PI) / nodes.length;
-
         nodes.forEach((d, i) => {
             const angle = i * angleStep;
             d.fx = centerX + radius * Math.cos(angle);
@@ -550,70 +469,49 @@
         simulation.alpha(1).restart();
     }
 
-    function closeModal(id) {
-        document.getElementById(id).style.display = 'none';
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    function fileComplaint() { if (COMPLAINT_FORM_URL.length < 30) alert("Link not set!"); else window.open(COMPLAINT_FORM_URL, '_blank'); }
+    function fileCompliment() { if (COMPLIMENT_FORM_URL.length < 30) alert("Link not set!"); else window.open(COMPLIMENT_FORM_URL, '_blank'); }
+    function renderList(modalId, contentId, dataObj, emptyMsg, cssClass) {
+        let html = "";
+        nodes.forEach(node => {
+            const items = dataObj[node.id];
+            if (items && items.length > 0) {
+                html += `<div class="list-group"><div class="list-header ${cssClass}"><img src="${node.img}" class="winner-img">${node.id}</div><ul class="item-list ${cssClass === 'complaint-text' ? 'complaint-list' : 'compliment-list'}">${items.map(item => `<li>${item}</li>`).join('')}</ul></div>`;
+            }
+        });
+        if (html === "") html = `<p style='text-align:center; color:#999;'>${emptyMsg}</p>`;
+        document.getElementById(contentId).innerHTML = html;
+        document.getElementById(modalId).style.display = 'block';
     }
+    function showComplaints() { renderList('complaints-modal', 'complaints-content', complaints, "No complaints recorded!", "complaint-text"); }
+    function showCompliments() { renderList('compliments-modal', 'compliments-content', compliments, "No compliments recorded yet!", "compliment-text"); }
 
-    // --- FILE FORMS ---
-    function fileComplaint() {
-        if (COMPLAINT_FORM_URL.length < 30) alert("Link not set!");
-        else window.open(COMPLAINT_FORM_URL, '_blank');
-    }
-    
-    function fileCompliment() {
-        if (COMPLIMENT_FORM_URL.length < 30) alert("Link not set!");
-        else window.open(COMPLIMENT_FORM_URL, '_blank');
-    }
-
-    // --- STATS LOGIC ---
     function showStats() {
         const stats = {};
         const relationshipMap = {};
-        nodes.forEach(n => {
-            stats[n.id] = { id: n.id, img: n.img, lovedScore: 0, hatedScore: 0, friendlyScore: 0, toxicScore: 0 };
-            relationshipMap[n.id] = {};
-        });
-
+        nodes.forEach(n => { stats[n.id] = { id: n.id, img: n.img, lovedScore: 0, hatedScore: 0, friendlyScore: 0, toxicScore: 0 }; relationshipMap[n.id] = {}; });
         links.forEach(l => {
-            const sId = typeof l.source === 'object' ? l.source.id : l.source;
-            const tId = typeof l.target === 'object' ? l.target.id : l.target;
+            const sId = l.source.id; const tId = l.target.id;
             relationshipMap[sId][tId] = l.type;
-
-            if (l.type === 'good') {
-                stats[tId].lovedScore++; stats[sId].friendlyScore++;
-            } else if (l.type === 'neutral') {
-                stats[sId].toxicScore += 1;
-            } else if (l.type === 'bad') {
-                stats[tId].hatedScore++; stats[sId].toxicScore += 3;
-            } else if (l.type === 'nemesis') {
-                stats[tId].hatedScore += 2; stats[sId].toxicScore += 5;
-            }
+            if (l.type === 'good') { stats[tId].lovedScore++; stats[sId].friendlyScore++; } 
+            else if (l.type === 'neutral') { stats[sId].toxicScore += 1; } 
+            else if (l.type === 'bad') { stats[tId].hatedScore++; stats[sId].toxicScore += 3; } 
+            else if (l.type === 'nemesis') { stats[tId].hatedScore += 2; stats[sId].toxicScore += 5; }
         });
-
         const conflicts = [];
-        const positiveTypes = ['good'];
-        const negativeTypes = ['bad', 'nemesis'];
-
+        const positiveTypes = ['good']; const negativeTypes = ['bad', 'nemesis'];
         for(let i = 0; i < nodes.length; i++) {
             for(let j = i+1; j < nodes.length; j++) {
-                const p1 = nodes[i].id;
-                const p2 = nodes[j].id;
-                const type1to2 = relationshipMap[p1][p2];
-                const type2to1 = relationshipMap[p2][p1];
-
+                const p1 = nodes[i].id; const p2 = nodes[j].id;
+                const type1to2 = relationshipMap[p1][p2]; const type2to1 = relationshipMap[p2][p1];
                 if(type1to2 && type2to1) {
-                     const p1Likes = positiveTypes.includes(type1to2);
-                     const p1Hates = negativeTypes.includes(type1to2);
-                     const p2Likes = positiveTypes.includes(type2to1);
-                     const p2Hates = negativeTypes.includes(type2to1);
-
-                     if((p1Likes && p2Hates) || (p1Hates && p2Likes)) {
-                         conflicts.push({ p1, t1: type1to2, p2, t2: type2to1 });
-                     }
+                     const p1Likes = positiveTypes.includes(type1to2); const p1Hates = negativeTypes.includes(type1to2);
+                     const p2Likes = positiveTypes.includes(type2to1); const p2Hates = negativeTypes.includes(type2to1);
+                     if((p1Likes && p2Hates) || (p1Hates && p2Likes)) { conflicts.push({ p1, t1: type1to2, p2, t2: type2to1 }); }
                 }
             }
         }
-        
         const allStats = Object.values(stats);
         const mostLoved = allStats.sort((a,b) => b.lovedScore - a.lovedScore)[0];
         const mostHated = allStats.sort((a,b) => b.hatedScore - a.hatedScore)[0];
@@ -627,57 +525,12 @@
             <div class="stat-row"><div class="stat-label">☠️ Biggest Hater</div><div class="stat-value"><img src="${mostToxic.img}" class="winner-img">${mostToxic.id} <small>(${mostToxic.toxicScore} pts)</small></div></div>
         `;
         document.getElementById('stats-content').innerHTML = statsContent;
-
         let conflictHTML = '';
-        if(conflicts.length === 0) {
-            conflictHTML = '<div class="conflict-item" style="text-align:center; color:#999;">No conflicting relationships found.</div>';
-        } else {
-            conflicts.forEach(c => {
-                conflictHTML += `
-                    <div class="conflict-item">
-                        <b>${c.p1}</b> feels <span class="type-${c.t1}">${c.t1.toUpperCase()}</span> 
-                        <span class="conflict-arrow">↔</span> 
-                        <b>${c.p2}</b> feels <span class="type-${c.t2}">${c.t2.toUpperCase()}</span>
-                    </div>
-                `;
-            });
-        }
+        if(conflicts.length === 0) { conflictHTML = '<div class="conflict-item" style="text-align:center; color:#999;">No conflicting relationships found.</div>'; } 
+        else { conflicts.forEach(c => { conflictHTML += `<div class="conflict-item"><b>${c.p1}</b> feels <span class="type-${c.t1}">${c.t1.toUpperCase()}</span> <span class="conflict-arrow">↔</span> <b>${c.p2}</b> feels <span class="type-${c.t2}">${c.t2.toUpperCase()}</span></div>`; }); }
         document.getElementById('conflict-list').innerHTML = conflictHTML;
         document.getElementById('stats-modal').style.display = 'block';
-    }
-
-    // --- COMPLAINTS/COMPLIMENTS RENDERERS ---
-    function renderList(modalId, contentId, dataObj, emptyMsg, cssClass) {
-        let html = "";
-        nodes.forEach(node => {
-            const items = dataObj[node.id];
-            if (items && items.length > 0) {
-                html += `
-                    <div class="list-group">
-                        <div class="list-header ${cssClass}">
-                            <img src="${node.img}" class="winner-img">
-                            ${node.id}
-                        </div>
-                        <ul class="item-list ${cssClass === 'complaint-text' ? 'complaint-list' : 'compliment-list'}">
-                            ${items.map(item => `<li>${item}</li>`).join('')}
-                        </ul>
-                    </div>
-                `;
-            }
-        });
-        if (html === "") html = `<p style='text-align:center; color:#999;'>${emptyMsg}</p>`;
-        document.getElementById(contentId).innerHTML = html;
-        document.getElementById(modalId).style.display = 'block';
-    }
-
-    function showComplaints() {
-        renderList('complaints-modal', 'complaints-content', complaints, "No complaints recorded!", "complaint-text");
-    }
-
-    function showCompliments() {
-        renderList('compliments-modal', 'compliments-content', compliments, "No compliments recorded yet!", "compliment-text");
     }
 </script>
 </body>
 </html>
-
