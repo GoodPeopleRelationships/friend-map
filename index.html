@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friend Group Map (Polished)</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #222; font-family: sans-serif; }
+        svg { display: block; width: 100vw; height: 100vh; cursor: grab; }
+        svg:active { cursor: grabbing; }
+        
+        text {
+            font-size: 12px; fill: white; pointer-events: none;
+            text-shadow: 1px 1px 2px black; font-weight: bold; transition: opacity 0.3s;
+        }
+        circle, path, image { transition: opacity 0.3s; }
+
+        /* --- UI CONTROLS --- */
+        #ui-controls {
+            position: absolute; top: 20px; left: 20px; display: flex; gap: 10px; z-index: 1000;
+        }
+        button {
+            padding: 10px 20px; background-color: #444; color: white;
+            border: 2px solid #fff; border-radius: 5px; cursor: pointer;
+            font-weight: bold; font-size: 14px; transition: background 0.2s;
+        }
+        button:hover { background-color: #666; }
+        #mode-btn { background-color: #2196F3; border-color: #2196F3; }
+        #mode-btn:hover { background-color: #1976D2; }
+        #stats-btn { background-color: #9c27b0; border-color: #9c27b0; }
+        #stats-btn:hover { background-color: #7b1fa2; }
+
+        /* --- STATS MODAL --- */
+        #stats-modal {
+            display: none;
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background-color: rgba(30, 30, 30, 0.95);
+            padding: 30px;
+            border-radius: 15px; border: 2px solid #555; color: white;
+            z-index: 2000;
+            
+            /* FIXED: Much wider now */
+            width: 500px; 
+            
+            max-height: 80vh; overflow-y: auto;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+        }
+        #stats-modal h2 { margin-top: 0; text-align: center; border-bottom: 1px solid #555; padding-bottom: 10px; }
+        #stats-modal h3 { margin-top: 25px; border-bottom: 1px solid #444; padding-bottom: 5px; color: #ddd;}
+        
+        /* Stats Rows */
+        .stat-row { display: flex; justify-content: space-between; align-items: center; margin: 15px 0; font-size: 16px; }
+        .stat-label { font-weight: bold; color: #ccc; }
+        .stat-value { font-weight: bold; font-size: 18px; }
+        .winner-img { width: 30px; height: 30px; border-radius: 50%; vertical-align: middle; margin-right: 10px; border: 2px solid white; }
+        
+        /* Conflict List Styles */
+        #conflict-list { max-height: 200px; overflow-y: auto; margin-top: 10px; }
+        .conflict-item {
+            background: rgba(255,255,255,0.05); padding: 10px; margin-bottom: 8px; border-radius: 5px; font-size: 14px;
+        }
+        .conflict-arrow { margin: 0 10px; color: #999; }
+        .type-good { color: #4caf50; font-weight: bold;}
+        .type-bad { color: #f44336; font-weight: bold;}
+        .type-nemesis { color: #9b27b0; font-weight: bold;}
+
+        #close-stats { display: block; width: 100%; margin-top: 20px; background-color: #f44336; border-color: #f44336; }
+
+        /* --- LEGEND --- */
+        #legend {
+            position: absolute; bottom: 20px; left: 20px;
+            background-color: rgba(0, 0, 0, 0.7); padding: 15px;
+            border-radius: 8px; border: 1px solid #555; color: white;
+            z-index: 1000; pointer-events: none;
+        }
+        .legend-item { display: flex; align-items: center; margin-bottom: 8px; font-size: 14px; }
+        .legend-item:last-child { margin-bottom: 0; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; display: inline-block; }
+    </style>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+
+<div id="ui-controls">
+    <button id="circle-btn" onclick="arrangeInCircle()">Circle Layout</button>
+    <button id="mode-btn" onclick="toggleMode()">Mode: Outgoing ➡</button>
+    <button id="stats-btn" onclick="showStats()">📊 View Stats</button>
+</div>
+
+<div id="stats-modal">
+    <h2>Relationship Stats</h2>
+    <div id="stats-content"></div>
+    
+    <h3>⚔️ Conflicting Relationships</h3>
+    <div id="conflict-list"></div>
+
+    <button id="close-stats" onclick="closeStats()">Close</button>
+</div>
+
+<div id="legend">
+    <div class="legend-item"><span class="dot" style="background-color: #4caf50;"></span> Good</div>
+    <div class="legend-item"><span class="dot" style="background-color: #FFD700;"></span> Neutral</div>
+    <div class="legend-item"><span class="dot" style="background-color: #f44336;"></span> Bad</div>
+    <div class="legend-item"><span class="dot" style="background-color: #9b27b0;"></span> Nemesis</div>
+</div>
+
+<div id="graph-container"></div>
+
+<script>
+    // ==========================================
+    // 1. CONFIGURATION
+    // ==========================================
+    
+    const nodes = [
+        { id: "rat", img: "rat.webp" },
+        { id: "claire", img: "claire.webp" },
+        { id: "comms", img: "comms.webp" },
+        { id: "emma", img: "emma.webp" },
+        { id: "iced", img: "iced.webp" },
+        { id: "kini", img: "kini.webp" },
+        { id: "kwan", img: "kwan.webp" },
+        { id: "mateo", img: "mateo.webp" },
+        { id: "mook", img: "mook.webp" },
+        { id: "redell", img: "redell.webp" },
+        { id: "rudhira", img: "rudhira.webp" },
+        { id: "sid", img: "sid.webp" },
+        { id: "thrice", img: "thrice.webp" },
+    ];
+
+    // NOTICE: We now define ONE-WAY relationships.
+    // If feelings are mutual, you need TWO entries (one from A to B, one from B to A).
+    const links = [
+        // Me <-> Sarah (Mutual Good)
+        { source: "rat", target: "claire", type: "good" },
+        { source: "rat", target: "comms", type: "good" },
+        { source: "rat", target: "emma", type: "good" },
+        { source: "rat", target: "iced", type: "good" },
+        { source: "rat", target: "kini", type: "good" },
+        { source: "rat", target: "kwan", type: "bad" },
+        { source: "rat", target: "mook", type: "bad" },
+        { source: "rat", target: "redell", type: "bad" },
+        { source: "rat", target: "rudhira", type: "bad" },
+        { source: "rat", target: "sid", type: "bad" },
+        { source: "rat", target: "thrice", type: "bad" },
+        { source: "rat", target: "mateo", type: "good" },
+		
+        { source: "kini", target: "claire", type: "good" },
+        { source: "kini", target: "comms", type: "good" },
+        { source: "kini", target: "emma", type: "good" },
+        { source: "kini", target: "iced", type: "good" },
+        { source: "kini", target: "rat", type: "good" },
+        { source: "kini", target: "kwan", type: "good" },
+        { source: "kini", target: "mook", type: "good" },
+        { source: "kini", target: "redell", type: "good" },
+        { source: "kini", target: "rudhira", type: "good" },
+        { source: "kini", target: "sid", type: "good" },
+        { source: "kini", target: "thrice", type: "good" },
+        { source: "kini", target: "mateo", type: "neutral" },
+		
+        { source: "redell", target: "claire", type: "good" },
+        { source: "redell", target: "comms", type: "good" },
+        { source: "redell", target: "emma", type: "good" },
+        { source: "redell", target: "iced", type: "neutral" },
+        { source: "redell", target: "rat", type: "good" },
+        { source: "redell", target: "kwan", type: "good" },
+        { source: "redell", target: "mook", type: "good" },
+        { source: "redell", target: "rat", type: "good" },
+        { source: "redell", target: "rudhira", type: "neutral" },
+        { source: "redell", target: "sid", type: "good" },
+        { source: "redell", target: "thrice", type: "good" },
+        { source: "redell", target: "mateo", type: "good" },
+        { source: "redell", target: "kini", type: "good" },
+		
+        { source: "thrice", target: "iced", type: "good" },
+        { source: "thrice", target: "mateo", type: "good" },
+        { source: "thrice", target: "rudhira", type: "bad" },
+        { source: "thrice", target: "comms", type: "good" },
+        { source: "thrice", target: "rat", type: "bad" },
+        { source: "thrice", target: "kini", type: "neutral" },
+        { source: "thrice", target: "mook", type: "good" },
+        { source: "thrice", target: "emma", type: "good" },
+        { source: "thrice", target: "kwan", type: "good" },
+        { source: "thrice", target: "sid", type: "good" },
+        { source: "thrice", target: "claire", type: "good" },
+        { source: "thrice", target: "redell", type: "good" },
+		
+        { source: "emma", target: "iced", type: "good" },
+        { source: "emma", target: "mateo", type: "good" },
+        { source: "emma", target: "thrice", type: "good" },
+        { source: "emma", target: "rudhira", type: "bad" },
+        { source: "emma", target: "comms", type: "good" },
+        { source: "emma", target: "rat", type: "good" },
+        { source: "emma", target: "kini", type: "good" },
+        { source: "emma", target: "mook", type: "good" },
+        { source: "emma", target: "kwan", type: "good" },
+        { source: "emma", target: "sid", type: "neutral" },
+        { source: "emma", target: "claire", type: "good" },
+        { source: "emma", target: "redell", type: "nemesis" },
+		
+       { source: "mateo", target: "iced", type: "good" },
+        { source: "mateo", target: "emma", type: "neutral" },
+        { source: "mateo", target: "thrice", type: "bad" },
+        { source: "mateo", target: "rudhira", type: "nemesis" },
+        { source: "mateo", target: "comms", type: "neutral" },
+        { source: "mateo", target: "rat", type: "bad" },
+        { source: "mateo", target: "kini", type: "neutral" },
+        { source: "mateo", target: "mook", type: "neutral" },
+        { source: "mateo", target: "kwan", type: "neutral" },
+        { source: "mateo", target: "sid", type: "bad" },
+        { source: "mateo", target: "redell", type: "bad" },
+		
+        { source: "comms", target: "iced", type: "good" },
+        { source: "comms", target: "mateo", type: "good" },
+        { source: "comms", target: "thrice", type: "good" },
+        { source: "comms", target: "rudhira", type: "bad" },
+        { source: "comms", target: "emma", type: "good" },
+        { source: "comms", target: "rat", type: "good" },
+        { source: "comms", target: "kini", type: "good" },
+        { source: "comms", target: "mook", type: "good" },
+        { source: "comms", target: "kwan", type: "good" },
+        { source: "comms", target: "sid", type: "nemesis" },
+        { source: "comms", target: "claire", type: "good" },
+        { source: "comms", target: "redell", type: "good" },
+		
+        { source: "iced", target: "comms", type: "good" },
+        { source: "iced", target: "mateo", type: "good" },
+        { source: "iced", target: "thrice", type: "neutral" },
+        { source: "iced", target: "rudhira", type: "neutral" },
+        { source: "iced", target: "emma", type: "good" },
+        { source: "iced", target: "rat", type: "good" },
+        { source: "iced", target: "kini", type: "bad" },
+        { source: "iced", target: "mook", type: "neutral" },
+        { source: "iced", target: "kwan", type: "good" },
+        { source: "iced", target: "sid", type: "neutral" },
+        { source: "iced", target: "claire", type: "good" },
+        { source: "iced", target: "redell", type: "bad" },
+		
+        { source: "kwan", target: "iced", type: "good" },
+        { source: "kwan", target: "mateo", type: "good" },
+        { source: "kwan", target: "thrice", type: "bad" },
+        { source: "kwan", target: "rudhira", type: "bad" },
+        { source: "kwan", target: "comms", type: "good" },
+        { source: "kwan", target: "emma", type: "good" },
+        { source: "kwan", target: "rat", type: "neutral" },
+        { source: "kwan", target: "kini", type: "neutral" },
+        { source: "kwan", target: "mook", type: "good" },
+        { source: "kwan", target: "sid", type: "good" },
+        { source: "kwan", target: "claire", type: "good" },
+        { source: "kwan", target: "redell", type: "neutral" },
+    ];
+
+    const colors = { 
+        good: "#4caf50", bad: "#f44336", neutral: "#FFD700", nemesis: "#9b27b0" 
+    };
+
+    // ==========================================
+    // 2. THE ENGINE
+    // ==========================================
+
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const nodeRadius = 35; 
+    let currentMode = 'outgoing';
+
+    const svg = d3.select("#graph-container").append("svg")
+        .attr("viewBox", [0, 0, width, height])
+        .on("click", resetFocus);
+
+    const g = svg.append("g");
+
+    const zoom = d3.zoom()
+        .scaleExtent([0.1, 4])
+        .on("zoom", (event) => g.attr("transform", event.transform));
+
+    svg.call(zoom);
+
+    const defs = svg.append("defs");
+    
+    // --- FIXED MARKER GENERATION ---
+    // We use 'userSpaceOnUse' to ensure arrow size is CONSTANT
+    // regardless of the line thickness.
+    ["good", "bad", "neutral", "nemesis"].forEach(type => {
+        defs.append("marker")
+            .attr("id", `arrow-${type}`)
+            .attr("viewBox", "0 -5 10 10")
+            // refX=42 ensures the arrow tip touches the edge of the circle (Radius 35)
+            .attr("refX", 42) 
+            .attr("refY", 0) // FIXED: Center alignment
+            .attr("markerWidth", 12) // FIXED: Constant size
+            .attr("markerHeight", 12)
+            .attr("orient", "auto")
+            .attr("markerUnits", "userSpaceOnUse") // PREVENTS GIANT ARROWS
+            .append("path")
+            .attr("d", "M0,-5L10,0L0,5")
+            .attr("fill", colors[type]);
+    });
+
+    nodes.forEach(d => {
+        defs.append("pattern")
+            .attr("id", "image-" + d.id)
+            .attr("height", "100%")
+            .attr("width", "100%")
+            .attr("patternContentUnits", "objectBoundingBox")
+            .append("image")
+            .attr("height", 1)
+            .attr("width", 1)
+            .attr("preserveAspectRatio", "none")
+            .attr("xlink:href", d.img);
+    });
+
+    const simulation = d3.forceSimulation(nodes)
+        .force("link", d3.forceLink(links).id(d => d.id).distance(350)) 
+        .force("charge", d3.forceManyBody().strength(-4000)) 
+        .force("collide", d3.forceCollide().radius(nodeRadius + 20).iterations(2)) 
+        .force("center", d3.forceCenter(width / 2, height / 2));
+
+    const link = g.append("g")
+        .attr("fill", "none")
+        .selectAll("path")
+        .data(links)
+        .join("path")
+        // Nemesis lines are thicker, but arrow stays same size now
+        .attr("stroke-width", d => d.type === 'nemesis' ? 4 : 2)
+        .attr("stroke", d => colors[d.type] || "#fff")
+        .attr("marker-end", d => `url(#arrow-${d.type})`);
+
+    const node = g.append("g")
+        .selectAll("circle")
+        .data(nodes)
+        .join("circle")
+        .attr("r", nodeRadius)
+        .attr("fill", d => `url(#image-${d.id})`)
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 2)
+        .attr("cursor", "pointer")
+        .on("click", handleNodeClick)
+        .call(drag(simulation));
+
+    const label = g.append("g")
+        .selectAll("text")
+        .data(nodes)
+        .join("text")
+        .attr("dx", 0)
+        .attr("dy", nodeRadius + 15)
+        .attr("text-anchor", "middle")
+        .text(d => d.id);
+
+    simulation.on("tick", () => {
+        link.attr("d", linkArc);
+        node.attr("cx", d => d.x).attr("cy", d => d.y);
+        label.attr("x", d => d.x).attr("y", d => d.y);
+    });
+
+    function linkArc(d) {
+        const dx = d.target.x - d.source.x;
+        const dy = d.target.y - d.source.y;
+        const dr = Math.sqrt(dx * dx + dy * dy);
+        return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
+    }
+
+    function drag(simulation) {
+        function dragstarted(event) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            event.subject.fx = event.subject.x;
+            event.subject.fy = event.subject.y;
+        }
+        function dragged(event) {
+            event.subject.fx = event.x;
+            event.subject.fy = event.y;
+        }
+        function dragended(event) {
+            if (!event.active) simulation.alphaTarget(0);
+        }
+        return d3.drag()
+            .on("start", dragstarted).on("drag", dragged).on("end", dragended);
+    }
+
+    // ==========================================
+    // 3. UI LOGIC & STATS
+    // ==========================================
+
+    let selectedNodeId = null;
+
+    function toggleMode() {
+        const btn = document.getElementById("mode-btn");
+        if (currentMode === 'outgoing') {
+            currentMode = 'incoming';
+            btn.innerText = "Mode: Incoming ⬅";
+        } else {
+            currentMode = 'outgoing';
+            btn.innerText = "Mode: Outgoing ➡";
+        }
+        if (selectedNodeId) {
+            const d = nodes.find(n => n.id === selectedNodeId);
+            if (d) highlightNode(d);
+        }
+    }
+
+    function handleNodeClick(event, d) {
+        event.stopPropagation();
+        if (selectedNodeId === d.id) {
+            resetFocus();
+        } else {
+            highlightNode(d);
+        }
+    }
+
+    function highlightNode(d) {
+        selectedNodeId = d.id;
+        node.style("opacity", 0.1);
+        link.style("opacity", 0.1);
+        label.style("opacity", 0.1);
+
+        node.filter(n => n.id === d.id).style("opacity", 1);
+        label.filter(n => n.id === d.id).style("opacity", 1);
+
+        if (currentMode === 'outgoing') {
+            link.filter(l => l.source.id === d.id).style("opacity", 1)
+                .each(function(l) {
+                    node.filter(n => n.id === l.target.id).style("opacity", 1);
+                    label.filter(n => n.id === l.target.id).style("opacity", 1);
+                });
+        } else {
+            link.filter(l => l.target.id === d.id).style("opacity", 1)
+                .each(function(l) {
+                    node.filter(n => n.id === l.source.id).style("opacity", 1);
+                    label.filter(n => n.id === l.source.id).style("opacity", 1);
+                });
+        }
+    }
+
+    function resetFocus() {
+        selectedNodeId = null;
+        node.style("opacity", 1);
+        link.style("opacity", 1);
+        label.style("opacity", 1);
+    }
+
+    function arrangeInCircle() {
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const radius = Math.min(width, height) * 0.4;
+        const angleStep = (2 * Math.PI) / nodes.length;
+
+        nodes.forEach((d, i) => {
+            const angle = i * angleStep;
+            d.fx = centerX + radius * Math.cos(angle);
+            d.fy = centerY + radius * Math.sin(angle);
+        });
+        simulation.alpha(1).restart();
+    }
+
+    // --- NEW STATS & CONFLICT LOGIC ---
+    function showStats() {
+        const stats = {};
+        const relationshipMap = {};
+        
+        nodes.forEach(n => {
+            stats[n.id] = { id: n.id, img: n.img, lovedScore: 0, hatedScore: 0, friendlyScore: 0, toxicScore: 0 };
+            relationshipMap[n.id] = {};
+        });
+
+        links.forEach(l => {
+            const sId = typeof l.source === 'object' ? l.source.id : l.source;
+            const tId = typeof l.target === 'object' ? l.target.id : l.target;
+
+            relationshipMap[sId][tId] = l.type;
+
+            if (l.type === 'good') {
+                stats[tId].lovedScore++;
+                stats[sId].friendlyScore++;
+            } else if (l.type === 'neutral') {
+                stats[sId].toxicScore += 1;
+            } else if (l.type === 'bad') {
+                stats[tId].hatedScore++; 
+                stats[sId].toxicScore += 3;
+            } else if (l.type === 'nemesis') {
+                stats[tId].hatedScore += 2; 
+                stats[sId].toxicScore += 5;
+            }
+        });
+
+        // --- Calculate Conflicts ---
+        const conflicts = [];
+        const positiveTypes = ['good'];
+        const negativeTypes = ['bad', 'nemesis'];
+
+        for(let i = 0; i < nodes.length; i++) {
+            for(let j = i+1; j < nodes.length; j++) {
+                const p1 = nodes[i].id;
+                const p2 = nodes[j].id;
+                const type1to2 = relationshipMap[p1][p2];
+                const type2to1 = relationshipMap[p2][p1];
+
+                if(type1to2 && type2to1) {
+                     const p1Likes = positiveTypes.includes(type1to2);
+                     const p1Hates = negativeTypes.includes(type1to2);
+                     const p2Likes = positiveTypes.includes(type2to1);
+                     const p2Hates = negativeTypes.includes(type2to1);
+
+                     if((p1Likes && p2Hates) || (p1Hates && p2Likes)) {
+                         conflicts.push({ p1, t1: type1to2, p2, t2: type2to1 });
+                     }
+                }
+            }
+        }
+        
+        // --- Render ---
+        const allStats = Object.values(stats);
+        const mostLoved = allStats.sort((a,b) => b.lovedScore - a.lovedScore)[0];
+        const mostHated = allStats.sort((a,b) => b.hatedScore - a.hatedScore)[0];
+        const mostFriendly = allStats.sort((a,b) => b.friendlyScore - a.friendlyScore)[0];
+        const mostToxic = allStats.sort((a,b) => b.toxicScore - a.toxicScore)[0];
+
+        const statsContent = `
+            <div class="stat-row"><div class="stat-label">❤️ Most Loved</div><div class="stat-value"><img src="${mostLoved.img}" class="winner-img">${mostLoved.id} <small>(${mostLoved.lovedScore} pts)</small></div></div>
+            <div class="stat-row"><div class="stat-label">🤬 Public Enemy #1</div><div class="stat-value"><img src="${mostHated.img}" class="winner-img">${mostHated.id} <small>(${mostHated.hatedScore} pts)</small></div></div>
+            <div class="stat-row"><div class="stat-label">😇 The Bestie</div><div class="stat-value"><img src="${mostFriendly.img}" class="winner-img">${mostFriendly.id} <small>(${mostFriendly.friendlyScore} pts)</small></div></div>
+            <div class="stat-row"><div class="stat-label">☠️ Biggest Hater</div><div class="stat-value"><img src="${mostToxic.img}" class="winner-img">${mostToxic.id} <small>(${mostToxic.toxicScore} pts)</small></div></div>
+        `;
+        document.getElementById('stats-content').innerHTML = statsContent;
+
+        let conflictHTML = '';
+        if(conflicts.length === 0) {
+            conflictHTML = '<div class="conflict-item" style="text-align:center; color:#999;">No conflicting relationships found.</div>';
+        } else {
+            conflicts.forEach(c => {
+                conflictHTML += `
+                    <div class="conflict-item">
+                        <b>${c.p1}</b> feels <span class="type-${c.t1}">${c.t1.toUpperCase()}</span> 
+                        <span class="conflict-arrow">↔</span> 
+                        <b>${c.p2}</b> feels <span class="type-${c.t2}">${c.t2.toUpperCase()}</span>
+                    </div>
+                `;
+            });
+        }
+        document.getElementById('conflict-list').innerHTML = conflictHTML;
+        document.getElementById('stats-modal').style.display = 'block';
+    }
+
+    function closeStats() {
+        document.getElementById('stats-modal').style.display = 'none';
+    }
+</script>
+</body>
+</html>
