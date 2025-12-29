@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Friend Group Map (Complaints Edition)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Friend Group Map (Mobile Fix)</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #222; font-family: sans-serif; }
+        body { margin: 0; overflow: hidden; background-color: #222; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
         svg { display: block; width: 100vw; height: 100vh; cursor: grab; }
         svg:active { cursor: grabbing; }
         
@@ -17,53 +17,59 @@
 
         /* --- UI CONTROLS --- */
         #ui-controls {
-            position: absolute; top: 20px; left: 20px; display: flex; gap: 10px; z-index: 1000;
+            position: absolute; top: 20px; left: 20px; 
+            display: flex; gap: 10px; z-index: 1000;
+            /* Allow buttons to wrap on small screens */
+            flex-wrap: wrap; 
+            max-width: 90vw;
         }
         button {
-            padding: 10px 20px; background-color: #444; color: white;
+            padding: 10px 15px; background-color: #444; color: white;
             border: 2px solid #fff; border-radius: 5px; cursor: pointer;
             font-weight: bold; font-size: 14px; transition: background 0.2s;
+            white-space: nowrap; /* Keep button text on one line */
         }
         button:hover { background-color: #666; }
         
         #mode-btn { background-color: #2196F3; border-color: #2196F3; }
-        #mode-btn:hover { background-color: #1976D2; }
-        
         #stats-btn { background-color: #9c27b0; border-color: #9c27b0; }
-        #stats-btn:hover { background-color: #7b1fa2; }
-
-        /* NEW COMPLAINTS BUTTON STYLE */
         #complaints-btn { background-color: #ff9800; border-color: #ff9800; }
-        #complaints-btn:hover { background-color: #f57c00; }
 
-        /* --- MODALS (Shared Styles) --- */
+        /* --- MODALS (Responsive) --- */
         .modal {
             display: none;
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            position: fixed; 
+            top: 50%; left: 50%; 
+            transform: translate(-50%, -50%);
             background-color: rgba(30, 30, 30, 0.95);
-            padding: 30px;
+            padding: 25px;
             border-radius: 15px; border: 2px solid #555; color: white;
             z-index: 2000;
-            width: 500px;
-            max-height: 80vh; overflow-y: auto;
+            
+            /* RESPONSIVE WIDTH FIX */
+            width: 90%;           /* Take up 90% of screen width on mobile */
+            max-width: 500px;     /* But never get larger than 500px on desktop */
+            max-height: 80vh;     /* Never taller than 80% of screen height */
+            
+            overflow-y: auto;     /* Scroll if content is too long */
             box-shadow: 0 0 20px rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+            box-sizing: border-box; /* Include padding in width calc */
         }
-        .modal h2 { margin-top: 0; text-align: center; border-bottom: 1px solid #555; padding-bottom: 10px; }
-        .modal h3 { margin-top: 25px; border-bottom: 1px solid #444; padding-bottom: 5px; color: #ddd;}
+        .modal h2 { margin-top: 0; text-align: center; border-bottom: 1px solid #555; padding-bottom: 10px; font-size: 1.5em; }
+        .modal h3 { margin-top: 25px; border-bottom: 1px solid #444; padding-bottom: 5px; color: #ddd; font-size: 1.2em;}
         
         .close-btn { display: block; width: 100%; margin-top: 20px; background-color: #f44336; border-color: #f44336; }
-        .close-btn:hover { background-color: #d32f2f; }
 
-        /* Stats Specifics */
+        /* Stats Rows */
         .stat-row { display: flex; justify-content: space-between; align-items: center; margin: 15px 0; font-size: 16px; }
-        .stat-label { font-weight: bold; color: #ccc; }
-        .stat-value { font-weight: bold; font-size: 18px; }
-        .winner-img { width: 30px; height: 30px; border-radius: 50%; vertical-align: middle; margin-right: 10px; border: 2px solid white; }
+        .stat-label { font-weight: bold; color: #ccc; flex: 1; }
+        .stat-value { font-weight: bold; font-size: 18px; text-align: right; }
+        .winner-img { width: 30px; height: 30px; border-radius: 50%; vertical-align: middle; margin-right: 5px; border: 2px solid white; }
         
         /* Conflict List Styles */
         #conflict-list { max-height: 200px; overflow-y: auto; margin-top: 10px; }
-        .conflict-item { background: rgba(255,255,255,0.05); padding: 10px; margin-bottom: 8px; border-radius: 5px; font-size: 14px; }
-        .conflict-arrow { margin: 0 10px; color: #999; }
+        .conflict-item { background: rgba(255,255,255,0.05); padding: 10px; margin-bottom: 8px; border-radius: 5px; font-size: 13px; line-height: 1.4; }
+        .conflict-arrow { margin: 0 5px; color: #999; }
         .type-good { color: #4caf50; font-weight: bold;}
         .type-bad { color: #f44336; font-weight: bold;}
         .type-nemesis { color: #9b27b0; font-weight: bold;}
@@ -72,18 +78,29 @@
         .complaint-group { margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; }
         .complaint-header { display: flex; align-items: center; font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #ffcc80; }
         .complaint-list { list-style-type: disc; padding-left: 20px; color: #ddd; }
-        .complaint-list li { margin-bottom: 5px; }
+        .complaint-list li { margin-bottom: 8px; font-size: 14px; line-height: 1.4; }
 
         /* --- LEGEND --- */
         #legend {
             position: absolute; bottom: 20px; left: 20px;
-            background-color: rgba(0, 0, 0, 0.7); padding: 15px;
+            background-color: rgba(0, 0, 0, 0.7); padding: 10px;
             border-radius: 8px; border: 1px solid #555; color: white;
             z-index: 1000; pointer-events: none;
+            font-size: 12px;
         }
-        .legend-item { display: flex; align-items: center; margin-bottom: 8px; font-size: 14px; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
         .legend-item:last-child { margin-bottom: 0; }
-        .dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; display: inline-block; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; display: inline-block; }
+
+        /* --- MOBILE SPECIFIC TWEAKS --- */
+        @media (max-width: 600px) {
+            button { padding: 8px 10px; font-size: 12px; }
+            #ui-controls { gap: 5px; }
+            .modal { padding: 15px; width: 95%; }
+            .stat-value { font-size: 14px; }
+            .stat-label { font-size: 14px; }
+            .conflict-item { font-size: 12px; }
+        }
     </style>
     <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
@@ -92,7 +109,7 @@
 <div id="ui-controls">
     <button id="circle-btn" onclick="arrangeInCircle()">Circle Layout</button>
     <button id="mode-btn" onclick="toggleMode()">Mode: Outgoing ➡</button>
-    <button id="stats-btn" onclick="showStats()">📊 View Stats</button>
+    <button id="stats-btn" onclick="showStats()">📊 Stats</button>
     <button id="complaints-btn" onclick="showComplaints()">⚠️ Complaints</button>
 </div>
 
@@ -106,8 +123,7 @@
 
 <div id="complaints-modal" class="modal">
     <h2>⚠️ The Grievance List</h2>
-    <div id="complaints-content">
-        </div>
+    <div id="complaints-content"></div>
     <button class="close-btn" onclick="closeModal('complaints-modal')">Close</button>
 </div>
 
@@ -604,11 +620,9 @@
     function showComplaints() {
         let html = "";
         
-        // Iterate through everyone in the graph
         nodes.forEach(node => {
             const userComplaints = complaints[node.id];
             
-            // Only show if they have complaints
             if (userComplaints && userComplaints.length > 0) {
                 html += `
                     <div class="complaint-group">
