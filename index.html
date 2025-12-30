@@ -33,11 +33,10 @@
         /* Button Colors */
         #mode-btn { background-color: #2196F3; border-color: #2196F3; }
         #stats-btn { background-color: #9c27b0; border-color: #9c27b0; }
-        
         #complaints-btn { background-color: #ff9800; border-color: #ff9800; }
         #compliments-btn { background-color: #e91e63; border-color: #e91e63; }
         
-        /* The New Unified Button */
+        /* Unified Feedback Button */
         #file-btn { background-color: #009688; border-color: #009688; }
         #file-btn:hover { background-color: #00796b; }
 
@@ -53,9 +52,23 @@
             overflow-y: auto; box-shadow: 0 0 20px rgba(0,0,0,0.8); backdrop-filter: blur(5px);
             box-sizing: border-box;
         }
-        .modal h2 { margin-top: 0; text-align: center; border-bottom: 1px solid #555; padding-bottom: 10px; font-size: 1.5em; }
+        .modal h2 { margin-top: 0; text-align: center; border-bottom: 1px solid #555; padding-bottom: 10px; font-size: 1.5em; padding-right: 20px; }
         .modal h3 { margin-top: 25px; border-bottom: 1px solid #444; padding-bottom: 5px; color: #ddd; font-size: 1.2em;}
         .close-btn { display: block; width: 100%; margin-top: 20px; background-color: #f44336; border-color: #f44336; }
+
+        /* THE "X" CLOSE BUTTON */
+        .close-x {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #aaa;
+            cursor: pointer;
+            transition: color 0.2s;
+            line-height: 1;
+        }
+        .close-x:hover { color: #fff; }
 
         /* Lists */
         .list-group { margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; }
@@ -104,14 +117,13 @@
     <button id="circle-btn" onclick="arrangeInCircle()">Circle</button>
     <button id="mode-btn" onclick="toggleMode()">Mode: Outgoing ➡</button>
     <button id="stats-btn" onclick="showStats()">📊 Stats</button>
-    
     <button id="complaints-btn" onclick="showComplaints()">⚠️ Complaints</button>
     <button id="compliments-btn" onclick="showCompliments()">🥰 Compliments</button>
-    
     <button id="file-btn" onclick="fileFeedback()">📝 File Feedback</button>
 </div>
 
 <div id="stats-modal" class="modal">
+    <span class="close-x" onclick="closeModal('stats-modal')">&times;</span>
     <h2>Relationship Stats</h2>
     <div id="stats-content"></div>
     <h3>⚔️ Conflicting Relationships</h3>
@@ -120,13 +132,15 @@
 </div>
 
 <div id="complaints-modal" class="modal">
-    <h2>complaints</h2>
+    <span class="close-x" onclick="closeModal('complaints-modal')">&times;</span>
+    <h2>⚠️ The Grievance List</h2>
     <div id="complaints-content"></div>
     <button class="close-btn" onclick="closeModal('complaints-modal')">Close</button>
 </div>
 
 <div id="compliments-modal" class="modal">
-    <h2>compliments</h2>
+    <span class="close-x" onclick="closeModal('compliments-modal')">&times;</span>
+    <h2>🥰 The Love List</h2>
     <div id="compliments-content"></div>
     <button class="close-btn" onclick="closeModal('compliments-modal')">Close</button>
 </div>
@@ -145,9 +159,8 @@
     // 1. CONFIGURATION
     // ==========================================
     
-    // !!! PASTE YOUR SINGLE GOOGLE FORM LINK HERE !!!
-    // Ensure your form has a dropdown question for "Type" (Complaint/Compliment)
-    const FEEDBACK_FORM_URL = "https://forms.gle/W4HXDx8b9KCd1XkSA"; 
+    // NEW SINGLE FORM LINK
+    const FEEDBACK_FORM_URL = "https://forms.gle/PJvixQw1wiEkdES97"; 
 
     const nodes = [
         { id: "rat", img: "rat.webp" },
@@ -490,15 +503,27 @@
         simulation.alpha(1).restart();
     }
 
-    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    // --- MODAL & BUTTON LOGIC ---
     
-    // --- SINGLE FILE FEEDBACK FUNCTION ---
+    // Helper to close all open modals
+    function closeAllModals() {
+        document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+    }
+
+    // Close specific modal (used by close buttons)
+    function closeModal(id) { 
+        document.getElementById(id).style.display = 'none'; 
+    }
+    
+    // File Feedback Button
     function fileFeedback() { 
         if (FEEDBACK_FORM_URL.length < 30) alert("Link not set!"); 
         else window.open(FEEDBACK_FORM_URL, '_blank'); 
     }
     
+    // Render Functions
     function renderList(modalId, contentId, dataObj, emptyMsg, cssClass) {
+        closeAllModals(); // Close others first
         let html = "";
         nodes.forEach(node => {
             const items = dataObj[node.id];
@@ -510,10 +535,17 @@
         document.getElementById(contentId).innerHTML = html;
         document.getElementById(modalId).style.display = 'block';
     }
-    function showComplaints() { renderList('complaints-modal', 'complaints-content', complaints, "No complaints recorded!", "complaint-text"); }
-    function showCompliments() { renderList('compliments-modal', 'compliments-content', compliments, "No compliments recorded yet!", "compliment-text"); }
+
+    function showComplaints() { 
+        renderList('complaints-modal', 'complaints-content', complaints, "No complaints recorded!", "complaint-text"); 
+    }
+    
+    function showCompliments() { 
+        renderList('compliments-modal', 'compliments-content', compliments, "No compliments recorded yet!", "compliment-text"); 
+    }
 
     function showStats() {
+        closeAllModals(); // Close others first
         const stats = {};
         const relationshipMap = {};
         nodes.forEach(n => { stats[n.id] = { id: n.id, img: n.img, lovedScore: 0, hatedScore: 0, friendlyScore: 0, toxicScore: 0 }; relationshipMap[n.id] = {}; });
@@ -560,14 +592,3 @@
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
